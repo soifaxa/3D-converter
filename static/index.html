@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D to 3D SBS Converter</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <span class="logo-icon">◈</span>
+          <div>
+            <h1>2D to 3D SBS Converter</h1>
+            <p class="subtitle">Convert flat videos into stereoscopic Side-by-Side format for VR</p>
+          </div>
+        </div>
+        <div id="gpu-status" class="gpu-badge">Checking GPU...</div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="card upload-section">
+        <h2>1. Upload Video</h2>
+        <div id="drop-zone" class="drop-zone">
+          <input type="file" id="file-input" accept=".mp4,.avi,.mov,.webm,.mkv" hidden>
+          <div class="drop-content">
+            <div class="drop-icon">⬆</div>
+            <p><strong>Drag & drop</strong> your video here or <button type="button" id="browse-btn" class="link-btn">browse</button></p>
+            <p class="hint">MP4, AVI, MOV, WebM, MKV — up to 500 MB, max 4K</p>
+          </div>
+        </div>
+        <div id="video-info" class="video-info hidden"></div>
+      </section>
+
+      <section class="card settings-section">
+        <h2>2. 3D Settings</h2>
+        <div class="sliders">
+          <div class="slider-group">
+            <label for="depth-intensity">Depth Intensity <span id="depth-value">0.5</span></label>
+            <input type="range" id="depth-intensity" min="0" max="1" step="0.05" value="0.5">
+            <small>Higher values create a stronger 3D effect</small>
+          </div>
+          <div class="slider-group">
+            <label for="convergence">Convergence <span id="convergence-value">5.0</span></label>
+            <input type="range" id="convergence" min="1" max="10" step="0.1" value="5.0">
+            <small>Adjusts where objects appear relative to the screen</small>
+          </div>
+          <div class="slider-group">
+            <label for="eye-separation">Eye Separation <span id="eye-value">2.5</span></label>
+            <input type="range" id="eye-separation" min="0.1" max="5" step="0.1" value="2.5">
+            <small>Controls virtual camera separation</small>
+          </div>
+        </div>
+
+        <div class="segment-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="use-segment">
+            Process a specific segment
+          </label>
+          <div id="segment-controls" class="segment-controls hidden">
+            <div class="segment-row">
+              <label for="segment-start">Start (s)</label>
+              <input type="number" id="segment-start" min="0" step="0.1" value="0">
+            </div>
+            <div class="segment-row">
+              <label for="segment-end">End (s)</label>
+              <input type="number" id="segment-end" min="0" step="0.1" value="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="preview-btn" class="btn btn-secondary" disabled>Update Preview</button>
+          <button type="button" id="convert-btn" class="btn btn-primary" disabled>Convert to 3D SBS</button>
+        </div>
+      </section>
+
+      <section class="card preview-section">
+        <h2>3. Preview & Output</h2>
+        <div id="preview-container" class="preview-container">
+          <div class="preview-placeholder">
+            <p>Upload a video and click "Update Preview" to see the 3D effect</p>
+          </div>
+          <img id="preview-image" class="preview-image hidden" alt="3D preview comparison">
+        </div>
+
+        <div id="progress-section" class="progress-section hidden">
+          <div class="progress-header">
+            <span id="progress-message">Processing...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <div id="download-section" class="download-section hidden">
+          <p class="success-message">✓ Conversion complete!</p>
+          <a id="download-link" class="btn btn-primary" href="#" download>Download 3D Video</a>
+        </div>
+
+        <div id="error-message" class="error-message hidden"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Powered by MiDaS depth estimation · Inspired by <a href="https://github.com/PointerSoftware/2D-to-3D-SBS-Converter" target="_blank" rel="noopener">2D-to-3D-SBS-Converter</a></p>
+    </footer>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
