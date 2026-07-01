@@ -148,13 +148,42 @@ def process_video_to_3d_sbs(
     return str(output_path)
 
 
-def generate_preview_frame(
+def _encode_jpeg_b64(image_bgr: np.ndarray, quality: int = 90) -> str:
+    import base64
+
+    success, buffer = cv2.imencode(".jpg", image_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    if not success:
+        raise RuntimeError("Failed to encode JPEG image")
+    return base64.b64encode(buffer.tobytes()).decode("ascii")
+
+
+def _encode_png_b64(image: np.ndarray) -> str:
+    import base64
+
+    success, buffer = cv2.imencode(".png", image)
+    if not success:
+        raise RuntimeError("Failed to encode PNG image")
+    return base64.b64encode(buffer.tobytes()).decode("ascii")
+
+
+def _prepare_depth_for_parallax(depth_map: np.ndarray, expand_radius: int = 3) -> np.ndarray:
+    """Near = bright. Optional edge expansion reduces stretch artifacts at depth boundaries."""
+    inverted = (1.0 - depth_map).astype(np.float32)
+    depth_u8 = (inverted * 255).astype(np.uint8)
+    if expand_radius > 0:
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (expand_radius * 2 + 1, expand_radius * 2 + 1))
+        depth_u8 = cv2.dilate(depth_u8, kernel, iterations=1)
+    return depth_u8
+
+
+def generate_preview_data(
     input_path: str | Path,
     depth_intensity: float,
     convergence: float,
     eye_separation: float,
     frame_position: float = 0.5,
-) -> np.ndarray:
+    preview_height: int = 480,
+) -> dict:
     valid, result = validate_video(input_path)
     if not valid:
         raise ValueError(result)
@@ -176,31 +205,24 @@ def generate_preview_frame(
     )
     sbs_frame = create_side_by_side(left_view, right_view)
 
-    preview_height = 360
-    preview_width = int(SBS_WIDTH * (preview_height / SBS_HEIGHT))
-    sbs_preview = cv2.resize(sbs_frame, (preview_width, preview_height))
-
     h, w = frame.shape[:2]
-    original_resized = cv2.resize(frame, (int(w * preview_height / h), preview_height))
+    preview_width = int(w * preview_height / h)
+    original_resized = cv2.resize(frame, (preview_width, preview_height))
+    depth_resized = cv2.resize(depth_map, (preview_width, preview_height), interpolation=cv2.INTER_LINEAR)
+    depth_gray = _prepare_depth_for_parallax(depth_resized)
 
-    gap = 10
-    preview = np.zeros((preview_height, original_resized.shape[1] + sbs_preview.shape[1] + gap, 3), dtype=np.uint8)
-    preview[:, : original_resized.shape[1]] = original_resized
-    preview[:, original_resized.shape[1] + gap :] = sbs_preview
-
-    cv2.putText(preview, "Original", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-    cv2.putText(
-        preview,
-        "3D SBS",
-        (original_resized.shape[1] + gap + 10, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.8,
-        (255, 255, 255),
-        2,
-    )
+    sbs_preview_width = int(SBS_WIDTH * (preview_height / SBS_HEIGHT))
+    sbs_preview = cv2.resize(sbs_frame, (sbs_preview_width, preview_height))
 
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         gc.collect()
 
-    return cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
+    return {
+        "width": preview_width,
+        "height": preview_height,
+        "sbs_width": sbs_preview_width,
+        "original_jpeg": _encode_jpeg_b64(original_resized),
+        "depth_png": _encode_png_b64(depth_gray),
+        "sbs_jpeg": _encode_jpeg_b64(sbs_preview),
+    }

@@ -1,119 +1,269 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D to 3D SBS Converter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>2D to 3D SBS Converter — Precision Studio</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app">
-    <header class="header">
-      <div class="header-content">
-        <div class="logo">
-          <span class="logo-icon">◈</span>
-          <div>
-            <h1>2D to 3D SBS Converter</h1>
-            <p class="subtitle">Convert flat videos into stereoscopic Side-by-Side format for VR</p>
-          </div>
-        </div>
+  <div class="app-studio">
+    <header class="studio-header">
+      <div class="studio-brand">
+        <svg class="studio-brand__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="5" width="9" height="14" rx="1"/>
+          <rect x="13" y="5" width="9" height="14" rx="1"/>
+          <line x1="11.5" y1="5" x2="11.5" y2="19" stroke-dasharray="2 2"/>
+        </svg>
+        <span class="studio-brand__title">2D → 3D SBS</span>
+        <span class="studio-brand__tag">Precision Studio</span>
+      </div>
+      <div class="studio-status-bar">
         <div id="gpu-status" class="gpu-badge">Checking GPU...</div>
+        <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+          <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="theme-icon-light" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
       </div>
     </header>
 
-    <main class="main">
-      <section class="card upload-section">
-        <h2>1. Upload Video</h2>
+    <div class="studio-workspace">
+      <!-- Left Panel: Source -->
+      <aside class="studio-panel studio-panel--left">
+        <p class="panel-section-title">Source</p>
         <div id="drop-zone" class="drop-zone">
           <input type="file" id="file-input" accept=".mp4,.avi,.mov,.webm,.mkv" hidden>
-          <div class="drop-content">
-            <div class="drop-icon">⬆</div>
-            <p><strong>Drag & drop</strong> your video here or <button type="button" id="browse-btn" class="link-btn">browse</button></p>
-            <p class="hint">MP4, AVI, MOV, WebM, MKV — up to 500 MB, max 4K</p>
-          </div>
+          <svg class="drop-zone__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p><strong>Drag & drop</strong> or <button type="button" id="browse-btn" class="link-btn">browse</button></p>
+          <p class="hint">MP4, AVI, MOV, WebM, MKV — up to 500 MB</p>
         </div>
         <div id="video-info" class="video-info hidden"></div>
-      </section>
+      </aside>
 
-      <section class="card settings-section">
-        <h2>2. 3D Settings</h2>
-        <div class="sliders">
-          <div class="slider-group">
-            <label for="depth-intensity">Depth Intensity <span id="depth-value">0.5</span></label>
-            <input type="range" id="depth-intensity" min="0" max="1" step="0.05" value="0.5">
-            <small>Higher values create a stronger 3D effect</small>
-          </div>
-          <div class="slider-group">
-            <label for="convergence">Convergence <span id="convergence-value">5.0</span></label>
-            <input type="range" id="convergence" min="1" max="10" step="0.1" value="5.0">
-            <small>Adjusts where objects appear relative to the screen</small>
-          </div>
-          <div class="slider-group">
-            <label for="eye-separation">Eye Separation <span id="eye-value">2.5</span></label>
-            <input type="range" id="eye-separation" min="0.1" max="5" step="0.1" value="2.5">
-            <small>Controls virtual camera separation</small>
-          </div>
+      <!-- Center Stage: SBS Preview -->
+      <main class="studio-stage">
+        <!-- Mobile upload -->
+        <div id="drop-zone-mobile" class="drop-zone drop-zone-mobile">
+          <input type="file" id="file-input-mobile" accept=".mp4,.avi,.mov,.webm,.mkv" hidden>
+          <p><strong>Tap to upload</strong> a video</p>
+          <p class="hint">MP4, AVI, MOV, WebM, MKV</p>
         </div>
+        <div id="video-info-mobile" class="video-info hidden"></div>
 
-        <div class="segment-options">
-          <label class="checkbox-label">
-            <input type="checkbox" id="use-segment">
-            Process a specific segment
-          </label>
-          <div id="segment-controls" class="segment-controls hidden">
-            <div class="segment-row">
-              <label for="segment-start">Start (s)</label>
-              <input type="number" id="segment-start" min="0" step="0.1" value="0">
-            </div>
-            <div class="segment-row">
-              <label for="segment-end">End (s)</label>
-              <input type="number" id="segment-end" min="0" step="0.1" value="0">
+        <div class="sbs-preview-wrapper">
+          <div class="sbs-preview-toolbar">
+            <span class="sbs-preview-toolbar__label">Preview</span>
+            <div class="view-toggle" role="group" aria-label="Preview view mode">
+              <button type="button" class="view-toggle__btn active" data-view="parallax">3D</button>
+              <button type="button" class="view-toggle__btn" data-view="sbs">SBS</button>
+              <button type="button" class="view-toggle__btn" data-view="anaglyph">Anaglyph</button>
+              <button type="button" class="view-toggle__btn" data-view="original">2D</button>
             </div>
           </div>
-        </div>
 
-        <div class="actions">
-          <button type="button" id="preview-btn" class="btn btn-secondary" disabled>Update Preview</button>
-          <button type="button" id="convert-btn" class="btn btn-primary" disabled>Convert to 3D SBS</button>
-        </div>
-      </section>
-
-      <section class="card preview-section">
-        <h2>3. Preview & Output</h2>
-        <div id="preview-container" class="preview-container">
-          <div class="preview-placeholder">
-            <p>Upload a video and click "Update Preview" to see the 3D effect</p>
+          <div id="preview-container" class="sbs-preview-container view-parallax">
+            <div class="sbs-preview-placeholder" id="preview-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+              </svg>
+              <p>Upload a video and generate a preview to explore the 3D depth effect</p>
+            </div>
+            <div id="preview-viewport" class="sbs-preview-viewport hidden">
+              <canvas id="preview-gl-canvas" class="sbs-preview-canvas sbs-preview-canvas--gl hidden"></canvas>
+              <canvas id="preview-canvas" class="sbs-preview-canvas hidden"></canvas>
+              <div id="preview-parallax-hint" class="sbs-preview-parallax-hint hidden">
+                Move cursor to explore depth
+              </div>
+              <div id="split-divider" class="sbs-split-divider"></div>
+              <div id="preview-labels" class="sbs-preview-labels hidden">
+                <span class="sbs-preview-label" id="label-left">Left Eye</span>
+                <span class="sbs-preview-label" id="label-right">Right Eye</span>
+              </div>
+            </div>
           </div>
-          <img id="preview-image" class="preview-image hidden" alt="3D preview comparison">
-        </div>
 
-        <div id="progress-section" class="progress-section hidden">
-          <div class="progress-header">
-            <span id="progress-message">Processing...</span>
-            <span id="progress-percent">0%</span>
+          <div id="progress-section" class="progress-time-estimate hidden">
+            <div class="progress-time-estimate__header">
+              <span id="progress-message" class="progress-time-estimate__message">Processing...</span>
+              <span id="progress-stats" class="progress-time-estimate__stats">0% · --:--</span>
+            </div>
+            <div class="progress-time-estimate__bar">
+              <div id="progress-fill" class="progress-time-estimate__fill"></div>
+            </div>
           </div>
-          <div class="progress-bar">
-            <div id="progress-fill" class="progress-fill"></div>
+
+          <div id="download-section" class="download-banner hidden">
+            <span class="download-banner__text">Conversion complete</span>
+            <a id="download-link" class="btn btn-primary" href="#" download>Download 3D Video</a>
+          </div>
+
+          <div id="error-message" class="error-toast hidden"></div>
+
+          <button type="button" id="mobile-settings-trigger" class="mobile-settings-trigger">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+              <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+              <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+            </svg>
+            Depth & Convergence Settings
+          </button>
+        </div>
+      </main>
+
+      <!-- Right Panel: Settings -->
+      <aside class="studio-panel studio-panel--right" id="settings-panel">
+        <p class="panel-section-title">Parameters</p>
+
+        <div class="setting-card is-open" data-card="depth">
+          <div class="setting-card__header">
+            <span class="setting-card__title">
+              <svg class="setting-card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+              </svg>
+              Depth & Parallax
+            </span>
+            <svg class="setting-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="setting-card__body">
+            <div class="range-slider" data-slider="depth-intensity">
+              <div class="range-slider__header">
+                <span class="range-slider__label">Depth Intensity</span>
+                <span class="range-slider__value-static" id="depth-value">0.60</span>
+              </div>
+              <div class="range-slider__track-wrap">
+                <div class="range-slider__tooltip" id="depth-tooltip">0.60</div>
+                <div class="range-slider__track">
+                  <div class="range-slider__fill" id="depth-fill"></div>
+                  <div class="range-slider__thumb" id="depth-thumb"></div>
+                  <div class="range-slider__ticks" id="depth-ticks"></div>
+                </div>
+                <input type="range" id="depth-intensity" class="range-slider__input"
+                       min="0" max="1" step="0.05" value="0.6">
+              </div>
+              <p class="range-slider__hint">Higher values create a stronger 3D parallax effect</p>
+            </div>
+
+            <div class="range-slider" data-slider="convergence">
+              <div class="range-slider__header">
+                <span class="range-slider__label">Convergence</span>
+                <span class="range-slider__value-static" id="convergence-value">5.0</span>
+              </div>
+              <div class="range-slider__track-wrap">
+                <div class="range-slider__tooltip" id="convergence-tooltip">5.0</div>
+                <div class="range-slider__track">
+                  <div class="range-slider__fill" id="convergence-fill"></div>
+                  <div class="range-slider__thumb" id="convergence-thumb"></div>
+                  <div class="range-slider__ticks" id="convergence-ticks"></div>
+                </div>
+                <input type="range" id="convergence" class="range-slider__input"
+                       min="1" max="10" step="0.1" value="5.0">
+              </div>
+              <p class="range-slider__hint">Adjusts where objects appear relative to the screen plane</p>
+            </div>
+
+            <div class="range-slider" data-slider="eye-separation">
+              <div class="range-slider__header">
+                <span class="range-slider__label">Eye Separation</span>
+                <span class="range-slider__value-static" id="eye-value">2.0</span>
+              </div>
+              <div class="range-slider__track-wrap">
+                <div class="range-slider__tooltip" id="eye-tooltip">2.0</div>
+                <div class="range-slider__track">
+                  <div class="range-slider__fill" id="eye-fill"></div>
+                  <div class="range-slider__thumb" id="eye-thumb"></div>
+                  <div class="range-slider__ticks" id="eye-ticks"></div>
+                </div>
+                <input type="range" id="eye-separation" class="range-slider__input"
+                       min="0.1" max="5" step="0.1" value="2.0">
+              </div>
+              <p class="range-slider__hint">Controls virtual interocular camera distance</p>
+            </div>
           </div>
         </div>
 
-        <div id="download-section" class="download-section hidden">
-          <p class="success-message">✓ Conversion complete!</p>
-          <a id="download-link" class="btn btn-primary" href="#" download>Download 3D Video</a>
+        <div class="setting-card" data-card="segment">
+          <div class="setting-card__header">
+            <span class="setting-card__title">
+              <svg class="setting-card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="20" height="20" rx="2"/><line x1="9" y1="2" x2="9" y2="22"/>
+              </svg>
+              Segment Export
+            </span>
+            <svg class="setting-card__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="setting-card__body">
+            <label class="checkbox-label">
+              <input type="checkbox" id="use-segment">
+              Process a specific time range
+            </label>
+            <div id="segment-controls" class="segment-controls hidden">
+              <div class="segment-row">
+                <label for="segment-start">Start (s)</label>
+                <input type="number" id="segment-start" min="0" step="0.1" value="0">
+              </div>
+              <div class="segment-row">
+                <label for="segment-end">End (s)</label>
+                <input type="number" id="segment-end" min="0" step="0.1" value="0">
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div id="error-message" class="error-message hidden"></div>
-      </section>
-    </main>
+        <div class="studio-actions">
+          <button type="button" id="preview-btn" class="btn btn-secondary" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Update Preview
+          </button>
+          <button type="button" id="convert-btn-desktop" class="btn btn-primary" disabled>
+            Convert to 3D SBS
+          </button>
+        </div>
+      </aside>
+    </div>
 
-    <footer class="footer">
+    <footer class="studio-footer">
       <p>Powered by MiDaS depth estimation · Inspired by <a href="https://github.com/PointerSoftware/2D-to-3D-SBS-Converter" target="_blank" rel="noopener">2D-to-3D-SBS-Converter</a></p>
     </footer>
   </div>
 
+  <!-- Mobile FAB -->
+  <button type="button" id="convert-btn-fab" class="fab-convert" disabled aria-label="Convert to 3D SBS">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  </button>
+
+  <!-- Mobile Bottom Sheet -->
+  <div id="bottom-sheet-overlay" class="bottom-sheet-overlay"></div>
+  <div id="bottom-sheet" class="bottom-sheet">
+    <div class="bottom-sheet__handle"></div>
+    <p class="bottom-sheet__title">Depth & Convergence</p>
+    <div id="bottom-sheet-content"></div>
+  </div>
+
+  <script src="/static/js/parallax.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>

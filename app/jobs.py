@@ -28,11 +28,14 @@ class ConversionJob:
     use_segment: bool
     segment_start: float
     segment_end: Optional[float]
+    filename: str = "video"
+    video_info: Optional[dict] = None
     status: JobStatus = JobStatus.PENDING
     progress: float = 0.0
     message: str = "Waiting to start..."
     error: Optional[str] = None
     created_at: float = field(default_factory=time.time)
+    started_at: Optional[float] = None
 
 
 class JobManager:
@@ -49,6 +52,8 @@ class JobManager:
         use_segment: bool = False,
         segment_start: float = 0,
         segment_end: Optional[float] = None,
+        filename: str = "video",
+        video_info: Optional[dict] = None,
     ) -> ConversionJob:
         job_id = str(uuid.uuid4())
         output_path = str(OUTPUT_DIR / f"{job_id}.mp4")
@@ -62,6 +67,8 @@ class JobManager:
             use_segment=use_segment,
             segment_start=segment_start,
             segment_end=segment_end,
+            filename=filename,
+            video_info=video_info,
         )
         with self._lock:
             self._jobs[job_id] = job
@@ -72,6 +79,17 @@ class JobManager:
     def get_job(self, job_id: str) -> Optional[ConversionJob]:
         with self._lock:
             return self._jobs.get(job_id)
+
+    def get_active_job(self) -> Optional[ConversionJob]:
+        with self._lock:
+            active = [
+                job
+                for job in self._jobs.values()
+                if job.status in (JobStatus.PENDING, JobStatus.RUNNING)
+            ]
+            if not active:
+                return None
+            return max(active, key=lambda job: job.created_at)
 
     def _update_job(self, job_id: str, **kwargs):
         with self._lock:
@@ -85,7 +103,12 @@ class JobManager:
         if not job:
             return
 
-        self._update_job(job_id, status=JobStatus.RUNNING, message="Starting conversion...")
+        self._update_job(
+            job_id,
+            status=JobStatus.RUNNING,
+            message="Starting conversion...",
+            started_at=time.time(),
+        )
 
         def on_progress(progress: float, message: str):
             self._update_job(job_id, progress=progress, message=message)

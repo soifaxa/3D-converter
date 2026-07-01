@@ -1,16 +1,13 @@
-import io
-import shutil
 import time
 from pathlib import Path
 from typing import Optional
 
-import cv2
-import numpy as np
 import torch
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import __version__
 from app.config import (
     DEFAULT_CONVERGENCE,
     DEFAULT_DEPTH_INTENSITY,
@@ -21,11 +18,11 @@ from app.config import (
     VALID_EXTENSIONS,
 )
 from app.converter.depth import setup_midas
-from app.converter.processor import generate_preview_frame
+from app.converter.processor import generate_preview_data
 from app.converter.video import get_video_duration, validate_video
 from app.jobs import JobStatus, job_manager
 
-app = FastAPI(title="2D to 3D SBS Converter", version="1.0.0")
+app = FastAPI(title="2D to 3D SBS Converter", version=__version__)
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -43,6 +40,7 @@ def health():
         gpu_name = torch.cuda.get_device_name(0)
     return {
         "status": "ok",
+        "version": __version__,
         "cuda_available": torch.cuda.is_available(),
         "gpu": gpu_name,
     }
@@ -102,13 +100,10 @@ def preview(
         raise HTTPException(status_code=400, detail="Invalid upload path")
 
     try:
-        preview_rgb = generate_preview_frame(
+        preview_data = generate_preview_data(
             path, depth_intensity, convergence, eye_separation, frame_position
         )
-        success, buffer = cv2.imencode(".jpg", cv2.cvtColor(preview_rgb, cv2.COLOR_RGB2BGR), [int(cv2.IMWRITE_JPEG_QUALITY), 90])
-        if not success:
-            raise RuntimeError("Failed to encode preview image")
-        return StreamingResponse(io.BytesIO(buffer.tobytes()), media_type="image/jpeg")
+        return JSONResponse(preview_data)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -122,6 +117,7 @@ def start_conversion(
     use_segment: bool = Form(False),
     segment_start: float = Form(0),
     segment_end: Optional[float] = Form(None),
+    filename: str = Form("video"),
 ):
     path = Path(upload_path)
     if not path.exists() or not str(path.resolve()).startswith(str(UPLOAD_DIR.resolve())):
@@ -142,6 +138,8 @@ def start_conversion(
         use_segment,
         segment_start,
         segment_end,
+        filename=filename,
+        video_info=result,
     )
     return {
         "job_id": job.id,
@@ -150,11 +148,7 @@ def start_conversion(
     }
 
 
-@app.get("/api/jobs/{job_id}")
-def get_job_status(job_id: str):
-    job = job_manager.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+def _job_to_response(job) -> dict:
     return {
         "job_id": job.id,
         "status": job.status,
@@ -162,7 +156,34 @@ def get_job_status(job_id: str):
         "message": job.message,
         "error": job.error,
         "download_ready": job.status == JobStatus.COMPLETED,
+        "upload_path": job.input_path,
+        "filename": job.filename,
+        "video_info": job.video_info,
+        "depth_intensity": job.depth_intensity,
+        "convergence": job.convergence,
+        "eye_separation": job.eye_separation,
+        "use_segment": job.use_segment,
+        "segment_start": job.segment_start,
+        "segment_end": job.segment_end,
+        "started_at": job.started_at,
+        "created_at": job.created_at,
     }
+
+
+@app.get("/api/jobs/active")
+def get_active_job():
+    job = job_manager.get_active_job()
+    if not job:
+        return {"job_id": None}
+    return _job_to_response(job)
+
+
+@app.get("/api/jobs/{job_id}")
+def get_job_status(job_id: str):
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return _job_to_response(job)
 
 
 @app.get("/api/jobs/{job_id}/download")
